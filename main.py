@@ -1,25 +1,24 @@
-from PIL import Image, ImageDraw, ImageFont
-
-import random
-import os
 from os.path import join
 
 import re
+import math
 
 
 def main():
-    #file_name = "eyetracking_zp65_2017_12_06.asc"
-    participant_id = "test"
+    participant_id = "zp65"
+
+    print("Start script for participant ", participant_id)
 
     all_lines = parse_eyetracking_data(participant_id)
     all_lines = parse_physio_data(all_lines, participant_id)
+    all_lines = parse_response_data(all_lines, participant_id)
     write_csv_file(all_lines, participant_id)
 
 
 def parse_physio_data(all_lines, participant_id):
-    print("Parse physio data...")
+    print("\nParse physio data...")
 
-    physio_input_file_path = join("input", participant_id + ".log")
+    physio_input_file_path = join("input", participant_id + "_physio.log")
 
     with open(physio_input_file_path) as input_file:
         start = False
@@ -58,8 +57,39 @@ def parse_physio_data(all_lines, participant_id):
     return all_lines
 
 
+def parse_response_data(all_lines, participant_id):
+    print("\nParse response data...")
+
+    response_input_file_path = join("input", participant_id + "_response.log")
+
+    with open(response_input_file_path) as input_file:
+        start = False
+        initial_timestampMs = 0
+
+        for i, line in enumerate(input_file):
+            if (i % 100) == 0:
+                print("-> Read row of response: ", i)
+
+            elements = line.split("\t")
+
+            if not start and i == 9:
+                initial_timestampMs = int(elements[4])
+                start = True
+
+            if start and elements[2] == "Response":
+                timestampMs = math.floor((int(elements[4]) - initial_timestampMs) / 10)
+
+                try:
+                    all_lines[timestampMs]["Response"] = elements[3]
+                except:
+                    print("Exception: more response data than eyetracking! This shouldn't happen...")
+                    break
+
+    return all_lines
+
+
 def parse_eyetracking_data(participant_name):
-    print("Parse eyetracking data...")
+    print("\nParse eyetracking data...")
 
     eyetracking_input_file_path = join("input", participant_name + ".asc")
 
@@ -94,6 +124,7 @@ def parse_eyetracking_data(participant_name):
                 "GazePosY": None,
                 "HeartRate": None,
                 "Breathing": None,
+                "Response": None,
             }
 
             # if the current one is code
@@ -181,6 +212,8 @@ def write_csv_file(all_lines, participant_name):
         output_file.write("HeartRate")
         output_file.write(';')
         output_file.write("Breathing")
+        output_file.write(';')
+        output_file.write("Response")
 
         for i, line in enumerate(all_lines):
             if (i % 25000) == 0:
@@ -208,6 +241,8 @@ def write_csv_file(all_lines, participant_name):
             output_file.write("" if line["HeartRate"] is None else str(line["HeartRate"]))
             output_file.write(';')
             output_file.write("" if line["Breathing"] is None else str(line["Breathing"]))
+            output_file.write(';')
+            output_file.write("" if line["Response"] is None else str(line["Response"]))
     print("-> saving file: done!")
 
 
