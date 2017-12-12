@@ -1,7 +1,6 @@
-# AttentionTestGenerator
+# EyelinkOgamaConnector
 
-AttentionTestGenerator is a Python script, which creates FullHD images of an attention task. I use it for empirical research on program comprehension (see [Brains on Code](https://github.com/brains-on-code)).
-This means the script is very personalized to my usage, and probably not directly useful to you without changes.
+EyelinkOgamaConnector is a Python script, which reads output files from [Eyelink](http://www.sr-research.com/mount_longrange_1000plus.html) and creates a .csv compatible with [Ogama](http://www.ogama.net).
 
 **Disclaimer: I am not a Python programmer and don't really know what I'm doing.**
 
@@ -9,13 +8,6 @@ This means the script is very personalized to my usage, and probably not directl
 ## Setup ##
 
 The project should run in any Python IDE. It was developed and tested with [PyCharms](https://www.jetbrains.com/pycharm/).
-
-
-# Contributing #
-
-Do you want to fix my horrible Python code? Feel free to create a pull request :)
-
-Thank you!
 
 
 # License #
