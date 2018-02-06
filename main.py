@@ -88,6 +88,14 @@ def parse_response_data(all_lines, participant_id):
     return all_lines
 
 
+def is_number(s):
+    try:
+        float(s)
+        return True
+    except ValueError:
+        return False
+
+
 def parse_eyetracking_data(participant_name):
     print("\nParse eyetracking data...")
 
@@ -107,6 +115,9 @@ def parse_eyetracking_data(participant_name):
         timestamp = 1
         subject = participant_name
         snippet = ""
+
+        gaze_positions_recognized = 0
+        gaze_positions_not_recognized = 0
 
         for i, line in enumerate(input_file):
             if (i % 25000) == 0:
@@ -155,7 +166,15 @@ def parse_eyetracking_data(participant_name):
             if line[0].isdigit():
                 numbers = re.split(r'\t+', line.rstrip('\t'))
                 csv_line_object["Time"] = numbers[0].lstrip()
-                csv_line_object["GazePosX"] = numbers[1].lstrip()
+
+                gaze_x = numbers[1].lstrip()
+
+                if (is_number(gaze_x)):
+                    gaze_positions_recognized += 1
+                else:
+                    gaze_positions_not_recognized += 1
+
+                csv_line_object["GazePosX"] = gaze_x
                 csv_line_object["GazePosY"] = numbers[2].lstrip()
 
                 #if (i % 500) == 0:
@@ -178,6 +197,10 @@ def parse_eyetracking_data(participant_name):
                 elif "Subject" in line:
                     startpos = line.find("Subject")
                     subject = line[startpos+8:].replace('\r', '').replace('\n', '')
+
+        print("-> Frames with gaze positions recognized: " + str(gaze_positions_recognized))
+        print("-> Frames with gaze positions not recognized: " + str(gaze_positions_not_recognized))
+        print("-> Percentage of recognized frames: " + str((gaze_positions_recognized/(gaze_positions_recognized+gaze_positions_not_recognized))*100))
 
     print("-> reading file: done!")
 
