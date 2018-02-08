@@ -1,8 +1,74 @@
 import copy
 from os.path import join
 
-import re
 import math
+
+
+def is_click_d2(run, click):
+
+    should_be_d2 = {
+        0: [8, 10, 11, 12, 15, 16],
+        1: [2, 6, 7, 17],
+        2: [5, 6, 8, 13, 20],
+        3: [3, 4, 14, 16, 17],
+        4: [4, 7, 15, 16],
+        5: [5, 16, 17, 19],
+        6: [1, 3, 4, 6, 8, 10, 13, 15, 18, 20],
+        7: [11, 12, 20],
+        8: [1, 10, 13, 20],
+        9: [2, 11, 13, 17],
+        10: [11, 13],
+        11: [6, 8, 11, 12, 14, 17, 19],
+        12: [14],
+        13: [1, 5, 15, 18],
+        14: [5, 8, 12],
+        15: [1, 2, 7, 14],
+        16: [1, 5, 8],
+        17: [3, 4, 10, 12],
+        18: [3],
+        19: [1, 4, 7, 13, 20],
+        20: [8, 15, 17],
+        21: [13, 14, 17, 18],
+        22: [3, 5, 9, 13, 14, 18],
+        23: [7, 8, 10, 17],
+        24: [4, 6, 10]
+    }.get(run, [])
+
+    return (click+1) in should_be_d2
+
+
+def analyze_d2(d2):
+    for run in d2["runs"]:
+        d2_overall = 0
+        d2_recognized = 0
+        d2_missed = 0
+        d2_incorrect = 0
+        p_correct = 0
+
+        for i, click in enumerate(run["clicks"]):
+            choice = click["choice"]
+            is_d2 = is_click_d2(run["i"], i)
+
+            if is_d2:
+                d2_overall += 1
+
+                if choice:
+                    d2_recognized += 1
+                else:
+                    d2_missed += 1
+            else:
+                if choice:
+                    d2_incorrect += 1
+                else:
+                    p_correct += 1
+
+        run["d2_overall"] = d2_overall
+        run["d2_recognized"] = d2_recognized
+        run["d2_missed"] = d2_missed
+        run["d2_incorrect"] = d2_incorrect
+        run["p_correct"] = p_correct
+
+    return d2
 
 
 def main():
@@ -14,6 +80,7 @@ def main():
     [top_down_beacon, top_down_no_beacon, top_down_untrained, bottom_up, syntax, d2] = analyze_data(all_stimuli)
 
     write_csv_file_comprehension([top_down_beacon, top_down_no_beacon, top_down_untrained, bottom_up, syntax], participant_id)
+    d2 = analyze_d2(d2)
     write_csv_file_d2(d2, participant_id)
 
 
@@ -241,9 +308,15 @@ def write_csv_file_d2(d2, participant_name):
         output_file.write(';')
         output_file.write("Count")
         output_file.write(';')
-        output_file.write("Correct")
+        output_file.write("D2 Overall")
         output_file.write(';')
-        output_file.write("Incorrect")
+        output_file.write("D2 Recognized")
+        output_file.write(';')
+        output_file.write("D2 Missed")
+        output_file.write(';')
+        output_file.write("D2 Incorrect")
+        output_file.write(';')
+        output_file.write("P Correct")
         output_file.write(';')
         output_file.write("ResponseTime1")
         output_file.write(';')
@@ -335,9 +408,15 @@ def write_csv_file_d2(d2, participant_name):
             output_file.write(';')
             output_file.write(str(len(run["clicks"])))
             output_file.write(';')
-            output_file.write("???")
+            output_file.write(str(run["d2_overall"]))
             output_file.write(';')
-            output_file.write("???")
+            output_file.write(str(run["d2_recognized"]))
+            output_file.write(';')
+            output_file.write(str(run["d2_missed"]))
+            output_file.write(';')
+            output_file.write(str(run["d2_incorrect"]))
+            output_file.write(';')
+            output_file.write(str(run["p_correct"]))
             output_file.write(';')
             output_file.write("" if len(run["clicks"]) == 0 else str(run["clicks"][0]["response_time"]))
             output_file.write(';')
