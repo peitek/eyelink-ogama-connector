@@ -71,12 +71,23 @@ def analyze_d2(d2):
     return d2
 
 
+def move_d2_clicks_to_late_response(all_stimuli):
+    for i, line in enumerate(all_stimuli):
+        if line["name"].startswith('D2') and len(line["responses"]) > 0:
+            if line["responses"][0]["response_time"] < 500:
+                all_stimuli[i - 1]["late_responses"].append(line["responses"][0])
+                line["responses"].pop(0)
+
+    return all_stimuli
+
+
 def main():
-    participant_id = "jl58"
+    participant_id = "mr25"
 
     print("Start script for participant ", participant_id)
 
     all_stimuli = parse_response_data(participant_id)
+    all_stimuli = move_d2_clicks_to_late_response(all_stimuli)
     [top_down_beacon, top_down_no_beacon, top_down_untrained, bottom_up, syntax, d2] = analyze_data(all_stimuli)
 
     write_csv_file_comprehension([top_down_beacon, top_down_no_beacon, top_down_untrained, bottom_up, syntax], participant_id)
@@ -268,17 +279,21 @@ def analyze_comprehension_stimulus(line, stimulus_summary):
     stimulus_summary["count"] += 1
     stimulus_summary["overall_clicks"] += len(line["responses"])/2 + len(line["late_responses"])/2
 
-    if len(line["responses"]) > 0:
-        stimulus_summary["responded"] += 1
-        analyze_last_click_comprehension(line["responses"], stimulus_summary)
-
-    if len(line["responses"]) > 2:
-        stimulus_summary["multi_clicks"] += 1
-
     if len(line["late_responses"]) > 0:
         stimulus_summary["responded"] += 1
         stimulus_summary["late_responses"] += 1
         analyze_last_click_comprehension(line["late_responses"], stimulus_summary)
+
+        if len(line["responses"]) > 0:
+            stimulus_summary["multi_clicks"] += 1
+
+    else:
+        if len(line["responses"]) > 0:
+            stimulus_summary["responded"] += 1
+            analyze_last_click_comprehension(line["responses"], stimulus_summary)
+
+        if len(line["responses"]) > 2:
+            stimulus_summary["multi_clicks"] += 1
 
 
 def analyze_last_click_comprehension(resp, stimulus_summary):
