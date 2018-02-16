@@ -1,27 +1,54 @@
 import copy
-from os.path import join
+from os.path import join, isfile
 
 import math
 
+import os
+
 
 def main():
-    participant_id = "qw51"
+    #participant_id = "qw51"
 
-    print("Start script for participant ", participant_id)
+    #print("Start script for participant ", participant_id)
 
-    all_stimuli = parse_response_data(participant_id)
-    all_stimuli = move_d2_clicks_to_late_response(all_stimuli)
-    [top_down_beacon, top_down_no_beacon, top_down_untrained, bottom_up, syntax, d2] = analyze_data(all_stimuli)
-    write_csv_file_comprehension([top_down_beacon, top_down_no_beacon, top_down_untrained, bottom_up, syntax], participant_id)
+    file_directory = "C:/Users/npeitek/Documents/GitHub/EyeLinkOgamaConnector/input"
 
-    d2 = analyze_d2(d2)
-    write_csv_file_d2(d2, participant_id)
+    # read all files from a directory and loop through them
+    only_files = [f for f in os.listdir(file_directory) if isfile(join(file_directory, f))]
+
+    comprehension_results = []
+    d2_results = []
+
+    for file_name in only_files:
+        if "response.log" in file_name or "ProgCode3_Eyetracking.log" in file_name:
+            participant_id = file_name[:4]
+
+            all_stimuli = parse_response_data(participant_id, file_name)
+            all_stimuli = move_d2_clicks_to_late_response(all_stimuli)
+            [top_down_beacon, top_down_no_beacon, top_down_untrained, bottom_up, syntax, d2] = analyze_data(all_stimuli)
+            comprehension_results.append({
+                "participant_id": participant_id,
+                "top_down_beacon": top_down_beacon,
+                "top_down_no_beacon": top_down_no_beacon,
+                "top_down_untrained": top_down_untrained,
+                "bottom_up": bottom_up,
+                "syntax": syntax
+            })
+
+            d2 = analyze_d2(d2)
+            d2_results.append({
+                "participant_id": participant_id,
+                "d2": d2
+            })
+
+    write_csv_file_comprehension(comprehension_results)
+    write_csv_file_d2(d2_results)
 
 
-def parse_response_data(participant_id):
+def parse_response_data(participant_id, file_name):
     print("\nParse response data...")
 
-    response_input_file_path = join("input", participant_id + "_response.log")
+    response_input_file_path = join("input", file_name)
 
     all_stimuli = []
 
@@ -147,9 +174,9 @@ def finalize_comprehension_summary(all_stimuli, d2):
 
     for i, line in enumerate(all_stimuli):
         if "TD_B" in line["name"]:
-            top_down_no_beacon.append(line)
-        elif "TD_N" in line["name"]:
             top_down_beacon.append(line)
+        elif "TD_N" in line["name"]:
+            top_down_no_beacon.append(line)
         elif "TD_U" in line["name"]:
             top_down_untrained.append(line)
         elif "BinaryToDecimal" in line["name"] or "Factorial" in line["name"] or "CountVowels" in line["name"] or "Maximum" in line["name"] or "IntertwineTwoWords" in line["name"]:
@@ -270,11 +297,20 @@ def analyze_d2(d2):
 
 
 def move_d2_clicks_to_late_response(all_stimuli):
+    # move early d2 clicks (within 500 ms to late click of the previous condition)
     for i, line in enumerate(all_stimuli):
         if line["name"].startswith('D2') and len(line["responses"]) > 0:
-            if line["responses"][0]["response_time"] < 500:
-                all_stimuli[i - 1]["late_responses"].append(line["responses"][0])
+            response = line["responses"][0]
+
+            if response["response_time"] < 500:
+                response["response_time"] += 32000
+                all_stimuli[i - 1]["late_responses"].append(response)
                 line["responses"].pop(0)
+
+                # move the matching button-up event as well
+                if response['response'] == 7 or  response['response'] == 4:
+                    all_stimuli[i - 1]["late_responses"].append(response)
+                    line["responses"].pop(0)
 
     return all_stimuli
 
@@ -305,7 +341,7 @@ def analyze_comprehension_stimulus(line, condition):
         analyze_last_click_comprehension(line["late_responses"], result_line)
 
         if len(line["responses"]) > 0:
-            line["multi_clicks"] += 1
+            result_line["multi_clicks"] += 1
 
     else:
         if len(line["responses"]) > 0:
@@ -327,15 +363,21 @@ def analyze_last_click_comprehension(resp, stimulus_summary):
         stimulus_summary["incorrect"] += 1
 
     stimulus_summary["response_times"].append(response["response_time"])
-    stimulus_summary["click_times"].append(resp[len(resp) - 1]["response_time"] - response["response_time"])
+
+    click_time = resp[len(resp) - 1]["response_time"] - response["response_time"]
+
+    if click_time < 0 and "D2" not in response["stimulus"]:
+        # approximate fix for the broken click time
+        click_time = (32000 - response["response_time"]) + resp[len(resp) - 1]["response_time"]
+
+    stimulus_summary["click_times"].append(click_time)
 
 
-def write_csv_file_d2(d2, participant_name):
+def write_csv_file_d2(d2):
     print("\n====================\n")
-    print("Write d2 result to a csv file for ...", participant_name)
 
-    # write objects to file as giant csv
-    output_file_path = join("output", participant_name + "_d2.csv")
+    # write objects to file as one csv for all participants
+    output_file_path = join("output", "all_participant_d2.csv")
     with open(output_file_path, 'w') as output_file:
         output_file.write("Participant")
         output_file.write(';')
@@ -435,119 +477,124 @@ def write_csv_file_d2(d2, participant_name):
         output_file.write(';')
         output_file.write("ClickTime20")
 
-        for run in d2["runs"]:
-            output_file.write("\n")
-            output_file.write(participant_name)
-            output_file.write(';')
-            output_file.write(run["name"])
-            output_file.write(';')
-            output_file.write(str(run["i"]))
-            output_file.write(';')
-            output_file.write(str(len(run["clicks"])))
-            output_file.write(';')
-            output_file.write(str(run["d2_overall"]))
-            output_file.write(';')
-            output_file.write(str(run["d2_recognized"]))
-            output_file.write(';')
-            output_file.write(str(run["d2_missed"]))
-            output_file.write(';')
-            output_file.write(str(run["d2_incorrect"]))
-            output_file.write(';')
-            output_file.write(str(run["p_correct"]))
-            output_file.write(';')
-            output_file.write("" if len(run["clicks"]) == 0 else str(run["clicks"][0]["response_time"]))
-            output_file.write(';')
-            output_file.write("" if len(run["clicks"]) < 2 else str(run["clicks"][1]["response_time"]))
-            output_file.write(';')
-            output_file.write("" if len(run["clicks"]) < 3 else str(run["clicks"][2]["response_time"]))
-            output_file.write(';')
-            output_file.write("" if len(run["clicks"]) < 4 else str(run["clicks"][3]["response_time"]))
-            output_file.write(';')
-            output_file.write("" if len(run["clicks"]) < 5 else str(run["clicks"][4]["response_time"]))
-            output_file.write(';')
-            output_file.write("" if len(run["clicks"]) < 6 else str(run["clicks"][5]["response_time"]))
-            output_file.write(';')
-            output_file.write("" if len(run["clicks"]) < 7 else str(run["clicks"][6]["response_time"]))
-            output_file.write(';')
-            output_file.write("" if len(run["clicks"]) < 8 else str(run["clicks"][7]["response_time"]))
-            output_file.write(';')
-            output_file.write("" if len(run["clicks"]) < 9 else str(run["clicks"][8]["response_time"]))
-            output_file.write(';')
-            output_file.write("" if len(run["clicks"]) < 10 else str(run["clicks"][9]["response_time"]))
-            output_file.write(';')
-            output_file.write("" if len(run["clicks"]) < 11 else str(run["clicks"][10]["response_time"]))
-            output_file.write(';')
-            output_file.write("" if len(run["clicks"]) < 12 else str(run["clicks"][11]["response_time"]))
-            output_file.write(';')
-            output_file.write("" if len(run["clicks"]) < 13 else str(run["clicks"][12]["response_time"]))
-            output_file.write(';')
-            output_file.write("" if len(run["clicks"]) < 14 else str(run["clicks"][13]["response_time"]))
-            output_file.write(';')
-            output_file.write("" if len(run["clicks"]) < 15 else str(run["clicks"][14]["response_time"]))
-            output_file.write(';')
-            output_file.write("" if len(run["clicks"]) < 16 else str(run["clicks"][15]["response_time"]))
-            output_file.write(';')
-            output_file.write("" if len(run["clicks"]) < 17 else str(run["clicks"][16]["response_time"]))
-            output_file.write(';')
-            output_file.write("" if len(run["clicks"]) < 18 else str(run["clicks"][17]["response_time"]))
-            output_file.write(';')
-            output_file.write("" if len(run["clicks"]) < 19 else str(run["clicks"][18]["response_time"]))
-            output_file.write(';')
-            output_file.write("" if len(run["clicks"]) < 20 else str(run["clicks"][19]["response_time"]))
-            output_file.write(';')
-            output_file.write("" if len(run["clicks"]) == 0 else str(run["clicks"][0]["click_time"]))
-            output_file.write(';')
-            output_file.write("" if len(run["clicks"]) < 2 else str(run["clicks"][1]["click_time"]))
-            output_file.write(';')
-            output_file.write("" if len(run["clicks"]) < 3 else str(run["clicks"][2]["click_time"]))
-            output_file.write(';')
-            output_file.write("" if len(run["clicks"]) < 4 else str(run["clicks"][3]["click_time"]))
-            output_file.write(';')
-            output_file.write("" if len(run["clicks"]) < 5 else str(run["clicks"][4]["click_time"]))
-            output_file.write(';')
-            output_file.write("" if len(run["clicks"]) < 6 else str(run["clicks"][5]["click_time"]))
-            output_file.write(';')
-            output_file.write("" if len(run["clicks"]) < 7 else str(run["clicks"][6]["click_time"]))
-            output_file.write(';')
-            output_file.write("" if len(run["clicks"]) < 8 else str(run["clicks"][7]["click_time"]))
-            output_file.write(';')
-            output_file.write("" if len(run["clicks"]) < 9 else str(run["clicks"][8]["click_time"]))
-            output_file.write(';')
-            output_file.write("" if len(run["clicks"]) < 10 else str(run["clicks"][9]["click_time"]))
-            output_file.write(';')
-            output_file.write("" if len(run["clicks"]) < 11 else str(run["clicks"][10]["click_time"]))
-            output_file.write(';')
-            output_file.write("" if len(run["clicks"]) < 12 else str(run["clicks"][11]["click_time"]))
-            output_file.write(';')
-            output_file.write("" if len(run["clicks"]) < 13 else str(run["clicks"][12]["click_time"]))
-            output_file.write(';')
-            output_file.write("" if len(run["clicks"]) < 14 else str(run["clicks"][13]["click_time"]))
-            output_file.write(';')
-            output_file.write("" if len(run["clicks"]) < 15 else str(run["clicks"][14]["click_time"]))
-            output_file.write(';')
-            output_file.write("" if len(run["clicks"]) < 16 else str(run["clicks"][15]["click_time"]))
-            output_file.write(';')
-            output_file.write("" if len(run["clicks"]) < 17 else str(run["clicks"][16]["click_time"]))
-            output_file.write(';')
-            output_file.write("" if len(run["clicks"]) < 18 else str(run["clicks"][17]["click_time"]))
-            output_file.write(';')
-            output_file.write("" if len(run["clicks"]) < 19 else str(run["clicks"][18]["click_time"]))
-            output_file.write(';')
-            output_file.write("" if len(run["clicks"]) < 20 else str(run["clicks"][19]["click_time"]))
+        for participant in d2:
+            participant_name = participant["participant_id"]
+
+            print("Write comprehension result to a csv file for ...", participant_name)
+            for run in participant["d2"]["runs"]:
+                output_file.write("\n")
+                output_file.write(participant_name)
+                output_file.write(';')
+                output_file.write(run["name"])
+                output_file.write(';')
+                output_file.write(str(run["i"]))
+                output_file.write(';')
+                output_file.write(str(len(run["clicks"])))
+                output_file.write(';')
+                output_file.write(str(run["d2_overall"]))
+                output_file.write(';')
+                output_file.write(str(run["d2_recognized"]))
+                output_file.write(';')
+                output_file.write(str(run["d2_missed"]))
+                output_file.write(';')
+                output_file.write(str(run["d2_incorrect"]))
+                output_file.write(';')
+                output_file.write(str(run["p_correct"]))
+                output_file.write(';')
+                output_file.write("" if len(run["clicks"]) == 0 else str(run["clicks"][0]["response_time"]))
+                output_file.write(';')
+                output_file.write("" if len(run["clicks"]) < 2 else str(run["clicks"][1]["response_time"]))
+                output_file.write(';')
+                output_file.write("" if len(run["clicks"]) < 3 else str(run["clicks"][2]["response_time"]))
+                output_file.write(';')
+                output_file.write("" if len(run["clicks"]) < 4 else str(run["clicks"][3]["response_time"]))
+                output_file.write(';')
+                output_file.write("" if len(run["clicks"]) < 5 else str(run["clicks"][4]["response_time"]))
+                output_file.write(';')
+                output_file.write("" if len(run["clicks"]) < 6 else str(run["clicks"][5]["response_time"]))
+                output_file.write(';')
+                output_file.write("" if len(run["clicks"]) < 7 else str(run["clicks"][6]["response_time"]))
+                output_file.write(';')
+                output_file.write("" if len(run["clicks"]) < 8 else str(run["clicks"][7]["response_time"]))
+                output_file.write(';')
+                output_file.write("" if len(run["clicks"]) < 9 else str(run["clicks"][8]["response_time"]))
+                output_file.write(';')
+                output_file.write("" if len(run["clicks"]) < 10 else str(run["clicks"][9]["response_time"]))
+                output_file.write(';')
+                output_file.write("" if len(run["clicks"]) < 11 else str(run["clicks"][10]["response_time"]))
+                output_file.write(';')
+                output_file.write("" if len(run["clicks"]) < 12 else str(run["clicks"][11]["response_time"]))
+                output_file.write(';')
+                output_file.write("" if len(run["clicks"]) < 13 else str(run["clicks"][12]["response_time"]))
+                output_file.write(';')
+                output_file.write("" if len(run["clicks"]) < 14 else str(run["clicks"][13]["response_time"]))
+                output_file.write(';')
+                output_file.write("" if len(run["clicks"]) < 15 else str(run["clicks"][14]["response_time"]))
+                output_file.write(';')
+                output_file.write("" if len(run["clicks"]) < 16 else str(run["clicks"][15]["response_time"]))
+                output_file.write(';')
+                output_file.write("" if len(run["clicks"]) < 17 else str(run["clicks"][16]["response_time"]))
+                output_file.write(';')
+                output_file.write("" if len(run["clicks"]) < 18 else str(run["clicks"][17]["response_time"]))
+                output_file.write(';')
+                output_file.write("" if len(run["clicks"]) < 19 else str(run["clicks"][18]["response_time"]))
+                output_file.write(';')
+                output_file.write("" if len(run["clicks"]) < 20 else str(run["clicks"][19]["response_time"]))
+                output_file.write(';')
+                output_file.write("" if len(run["clicks"]) == 0 else str(run["clicks"][0]["click_time"]))
+                output_file.write(';')
+                output_file.write("" if len(run["clicks"]) < 2 else str(run["clicks"][1]["click_time"]))
+                output_file.write(';')
+                output_file.write("" if len(run["clicks"]) < 3 else str(run["clicks"][2]["click_time"]))
+                output_file.write(';')
+                output_file.write("" if len(run["clicks"]) < 4 else str(run["clicks"][3]["click_time"]))
+                output_file.write(';')
+                output_file.write("" if len(run["clicks"]) < 5 else str(run["clicks"][4]["click_time"]))
+                output_file.write(';')
+                output_file.write("" if len(run["clicks"]) < 6 else str(run["clicks"][5]["click_time"]))
+                output_file.write(';')
+                output_file.write("" if len(run["clicks"]) < 7 else str(run["clicks"][6]["click_time"]))
+                output_file.write(';')
+                output_file.write("" if len(run["clicks"]) < 8 else str(run["clicks"][7]["click_time"]))
+                output_file.write(';')
+                output_file.write("" if len(run["clicks"]) < 9 else str(run["clicks"][8]["click_time"]))
+                output_file.write(';')
+                output_file.write("" if len(run["clicks"]) < 10 else str(run["clicks"][9]["click_time"]))
+                output_file.write(';')
+                output_file.write("" if len(run["clicks"]) < 11 else str(run["clicks"][10]["click_time"]))
+                output_file.write(';')
+                output_file.write("" if len(run["clicks"]) < 12 else str(run["clicks"][11]["click_time"]))
+                output_file.write(';')
+                output_file.write("" if len(run["clicks"]) < 13 else str(run["clicks"][12]["click_time"]))
+                output_file.write(';')
+                output_file.write("" if len(run["clicks"]) < 14 else str(run["clicks"][13]["click_time"]))
+                output_file.write(';')
+                output_file.write("" if len(run["clicks"]) < 15 else str(run["clicks"][14]["click_time"]))
+                output_file.write(';')
+                output_file.write("" if len(run["clicks"]) < 16 else str(run["clicks"][15]["click_time"]))
+                output_file.write(';')
+                output_file.write("" if len(run["clicks"]) < 17 else str(run["clicks"][16]["click_time"]))
+                output_file.write(';')
+                output_file.write("" if len(run["clicks"]) < 18 else str(run["clicks"][17]["click_time"]))
+                output_file.write(';')
+                output_file.write("" if len(run["clicks"]) < 19 else str(run["clicks"][18]["click_time"]))
+                output_file.write(';')
+                output_file.write("" if len(run["clicks"]) < 20 else str(run["clicks"][19]["click_time"]))
 
     print("-> saving file: done!")
 
 
-def write_csv_file_comprehension(reports, participant_name):
+def write_csv_file_comprehension(comprehension_results):
     print("\n====================\n")
-    print("Write comprehension result to a csv file for ...", participant_name)
 
-    # write objects to file as giant csv
-    output_file_path = join("output", participant_name + "_responses.csv")
+    # write objects to file as one csv for all participants
+    output_file_path = join("output", "all_participant_responses.csv")
     with open(output_file_path, 'w') as output_file:
         output_file.write("Participant")
         output_file.write(';')
         output_file.write("Condition")
+        output_file.write(';')
+        output_file.write("Snippet")
         output_file.write(';')
         output_file.write("Count")
         output_file.write(';')
@@ -585,13 +632,17 @@ def write_csv_file_comprehension(reports, participant_name):
         output_file.write(';')
         output_file.write("ClickTime5")
 
-        [top_down_beacon, top_down_no_beacon, top_down_untrained, bottom_up, syntax] = reports
+        for participant in comprehension_results:
+            participant_name = participant["participant_id"]
 
-        write_line_for_condition(output_file, participant_name, top_down_beacon, "TD_B")
-        write_line_for_condition(output_file, participant_name, top_down_no_beacon, "TD_N")
-        write_line_for_condition(output_file, participant_name, top_down_untrained, "TD_U")
-        write_line_for_condition(output_file, participant_name, bottom_up, "BU")
-        write_line_for_condition(output_file, participant_name, syntax, "SY")
+            print("Write comprehension result to a csv file for ...", participant_name)
+
+            write_line_for_condition(output_file, participant_name, participant["top_down_beacon"], "TD_B")
+            write_line_for_condition(output_file, participant_name, participant["top_down_no_beacon"], "TD_N")
+            write_line_for_condition(output_file, participant_name, participant["top_down_untrained"], "TD_U")
+            write_line_for_condition(output_file, participant_name, participant["bottom_up"], "BU")
+            write_line_for_condition(output_file, participant_name, participant["syntax"], "SY")
+
     print("-> saving file: done!")
 
 
@@ -603,6 +654,8 @@ def write_line_for_condition(output_file, participant_name, conditions, name):
         output_file.write(participant_name)
         output_file.write(';')
         output_file.write(name)
+        output_file.write(';')
+        output_file.write(line["name"])
         output_file.write(';')
         output_file.write(str(summary["count"]))
         output_file.write(';')
