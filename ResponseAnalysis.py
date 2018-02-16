@@ -4,93 +4,16 @@ from os.path import join
 import math
 
 
-def is_click_d2(run, click):
-
-    should_be_d2 = {
-        0: [8, 10, 11, 12, 15, 16],
-        1: [2, 6, 7, 17],
-        2: [5, 6, 8, 13, 20],
-        3: [3, 4, 14, 16, 17],
-        4: [4, 7, 15, 16],
-        5: [5, 16, 17, 19],
-        6: [1, 3, 4, 6, 8, 10, 13, 15, 18, 20],
-        7: [11, 12, 20],
-        8: [1, 10, 13, 20],
-        9: [2, 11, 13, 17],
-        10: [11, 13],
-        11: [6, 8, 11, 12, 14, 17, 19],
-        12: [14],
-        13: [1, 5, 15, 18],
-        14: [5, 8, 12],
-        15: [1, 2, 7, 14],
-        16: [1, 5, 8],
-        17: [3, 4, 10, 12],
-        18: [3],
-        19: [1, 4, 7, 13, 20],
-        20: [8, 15, 17],
-        21: [13, 14, 17, 18],
-        22: [3, 5, 9, 13, 14, 18],
-        23: [7, 8, 10, 17],
-        24: [4, 6, 10]
-    }.get(run, [])
-
-    return (click+1) in should_be_d2
-
-
-def analyze_d2(d2):
-    for run in d2["runs"]:
-        d2_overall = 0
-        d2_recognized = 0
-        d2_missed = 0
-        d2_incorrect = 0
-        p_correct = 0
-
-        for i, click in enumerate(run["clicks"]):
-            choice = click["choice"]
-            is_d2 = is_click_d2(run["i"], i)
-
-            if is_d2:
-                d2_overall += 1
-
-                if choice:
-                    d2_recognized += 1
-                else:
-                    d2_missed += 1
-            else:
-                if choice:
-                    d2_incorrect += 1
-                else:
-                    p_correct += 1
-
-        run["d2_overall"] = d2_overall
-        run["d2_recognized"] = d2_recognized
-        run["d2_missed"] = d2_missed
-        run["d2_incorrect"] = d2_incorrect
-        run["p_correct"] = p_correct
-
-    return d2
-
-
-def move_d2_clicks_to_late_response(all_stimuli):
-    for i, line in enumerate(all_stimuli):
-        if line["name"].startswith('D2') and len(line["responses"]) > 0:
-            if line["responses"][0]["response_time"] < 500:
-                all_stimuli[i - 1]["late_responses"].append(line["responses"][0])
-                line["responses"].pop(0)
-
-    return all_stimuli
-
-
 def main():
-    participant_id = "mr25"
+    participant_id = "qw51"
 
     print("Start script for participant ", participant_id)
 
     all_stimuli = parse_response_data(participant_id)
     all_stimuli = move_d2_clicks_to_late_response(all_stimuli)
     [top_down_beacon, top_down_no_beacon, top_down_untrained, bottom_up, syntax, d2] = analyze_data(all_stimuli)
-
     write_csv_file_comprehension([top_down_beacon, top_down_no_beacon, top_down_untrained, bottom_up, syntax], participant_id)
+
     d2 = analyze_d2(d2)
     write_csv_file_d2(d2, participant_id)
 
@@ -182,55 +105,59 @@ def analyze_data(all_stimuli):
 
         "runs": []
     }
-    top_down_beacon = {
-        "count": 0,
-        "responded": 0,
-        "not_responded": 0,
-
-        "correct": 0,
-        "incorrect": 0,
-
-        "late_responses": 0,
-        "multi_clicks": 0,
-        "overall_clicks": 0,
-        "response_times": [],
-        "click_times": [],
-    }
-    top_down_no_beacon = copy.deepcopy(top_down_beacon)
-    top_down_untrained = copy.deepcopy(top_down_beacon)
-    bottom_up = copy.deepcopy(top_down_beacon)
-    syntax = copy.deepcopy(top_down_beacon)
 
     for i, line in enumerate(all_stimuli):
         if "TD_B" in line["name"]:
-            analyze_comprehension_stimulus(line, top_down_beacon)
+            analyze_comprehension_stimulus(line, "TD_B")
         elif "TD_N" in line["name"]:
-            analyze_comprehension_stimulus(line, top_down_no_beacon)
+            analyze_comprehension_stimulus(line, "TD_N")
         elif "TD_U" in line["name"]:
-            analyze_comprehension_stimulus(line, top_down_untrained)
+            analyze_comprehension_stimulus(line, "TD_U")
         elif "BinaryToDecimal" in line["name"] or "Factorial" in line["name"] or "CountVowels" in line["name"] or "Maximum" in line["name"] or "IntertwineTwoWords" in line["name"]:
-            analyze_comprehension_stimulus(line, bottom_up)
+            analyze_comprehension_stimulus(line, "BU")
 
         elif "SY" in line["name"]:
-            analyze_comprehension_stimulus(line, syntax)
+            analyze_comprehension_stimulus(line, "SY")
 
         elif "D2" in line["name"]:
+            line["condition"] = "D2"
             analyze_d2_stimulus(line, d2)
 
         elif "RestCondition" in line["name"]:
+            if len(line["responses"]) > 0:
+                print('click in rest condition o.O')
             continue
 
         else:
             print('unknown stimulus (' + line["name"] + ') ' + str(i))
 
-    finalize_comprehension_summary([top_down_beacon, top_down_no_beacon, top_down_untrained, bottom_up, syntax])
+    return finalize_comprehension_summary(all_stimuli, d2)
+
+
+def finalize_comprehension_summary(all_stimuli, d2):
+    for stimuli in all_stimuli:
+        if "D2" not in stimuli["name"] and "Rest" not in stimuli["name"]:
+            stimuli["summary"]["not_responded"] = 1 - stimuli["summary"]["responded"]
+
+    top_down_beacon = []
+    top_down_no_beacon = []
+    top_down_untrained = []
+    bottom_up = []
+    syntax = []
+
+    for i, line in enumerate(all_stimuli):
+        if "TD_B" in line["name"]:
+            top_down_no_beacon.append(line)
+        elif "TD_N" in line["name"]:
+            top_down_beacon.append(line)
+        elif "TD_U" in line["name"]:
+            top_down_untrained.append(line)
+        elif "BinaryToDecimal" in line["name"] or "Factorial" in line["name"] or "CountVowels" in line["name"] or "Maximum" in line["name"] or "IntertwineTwoWords" in line["name"]:
+            bottom_up.append(line)
+        elif "SY" in line["name"]:
+            syntax.append(line)
 
     return [top_down_beacon, top_down_no_beacon, top_down_untrained, bottom_up, syntax, d2]
-
-
-def finalize_comprehension_summary(all_stimuli):
-    for stimuli in all_stimuli:
-        stimuli["not_responded"] = 5 - stimuli["responded"]
 
 
 def analyze_d2_stimulus(line, stimulus_summary):
@@ -275,25 +202,120 @@ def analyze_d2_click(resp, stimulus_summary):
     stimulus_summary["click_times"].append(resp[len(resp) - 1]["response_time"] - response["response_time"])
 
 
-def analyze_comprehension_stimulus(line, stimulus_summary):
-    stimulus_summary["count"] += 1
-    stimulus_summary["overall_clicks"] += len(line["responses"])/2 + len(line["late_responses"])/2
+def is_click_d2(run, click):
+
+    should_be_d2 = {
+        0: [8, 10, 11, 12, 15, 16],
+        1: [2, 6, 7, 17],
+        2: [5, 6, 8, 13, 20],
+        3: [3, 4, 14, 16, 17],
+        4: [4, 7, 15, 16],
+        5: [5, 16, 17, 19],
+        6: [1, 3, 4, 6, 8, 10, 13, 15, 18, 20],
+        7: [11, 12, 20],
+        8: [1, 10, 13, 20],
+        9: [2, 11, 13, 17],
+        10: [11, 13],
+        11: [6, 8, 11, 12, 14, 17, 19],
+        12: [14],
+        13: [1, 5, 15, 18],
+        14: [5, 8, 12],
+        15: [1, 2, 7, 14],
+        16: [1, 5, 8],
+        17: [3, 4, 10, 12],
+        18: [3],
+        19: [1, 4, 7, 13, 20],
+        20: [8, 15, 17],
+        21: [13, 14, 17, 18],
+        22: [3, 5, 9, 13, 14, 18],
+        23: [7, 8, 10, 17],
+        24: [4, 6, 10]
+    }.get(run, [])
+
+    return (click+1) in should_be_d2
+
+
+def analyze_d2(d2):
+    for run in d2["runs"]:
+        d2_overall = 0
+        d2_recognized = 0
+        d2_missed = 0
+        d2_incorrect = 0
+        p_correct = 0
+
+        for i, click in enumerate(run["clicks"]):
+            choice = click["choice"]
+            is_d2 = is_click_d2(run["i"], i)
+
+            if is_d2:
+                d2_overall += 1
+
+                if choice:
+                    d2_recognized += 1
+                else:
+                    d2_missed += 1
+            else:
+                if choice:
+                    d2_incorrect += 1
+                else:
+                    p_correct += 1
+
+        run["d2_overall"] = d2_overall
+        run["d2_recognized"] = d2_recognized
+        run["d2_missed"] = d2_missed
+        run["d2_incorrect"] = d2_incorrect
+        run["p_correct"] = p_correct
+
+    return d2
+
+
+def move_d2_clicks_to_late_response(all_stimuli):
+    for i, line in enumerate(all_stimuli):
+        if line["name"].startswith('D2') and len(line["responses"]) > 0:
+            if line["responses"][0]["response_time"] < 500:
+                all_stimuli[i - 1]["late_responses"].append(line["responses"][0])
+                line["responses"].pop(0)
+
+    return all_stimuli
+
+
+def analyze_comprehension_stimulus(line, condition):
+    result_line = {
+        "count": 0,
+        "responded": 0,
+        "not_responded": 0,
+
+        "correct": 0,
+        "incorrect": 0,
+
+        "late_responses": 0,
+        "multi_clicks": 0,
+        "overall_clicks": 0,
+        "response_times": [],
+        "click_times": [],
+    }
+
+    line["condition"] = condition
+    result_line["count"] += 1
+    result_line["overall_clicks"] += math.ceil(len(line["responses"])/2 + len(line["late_responses"])/2)
 
     if len(line["late_responses"]) > 0:
-        stimulus_summary["responded"] += 1
-        stimulus_summary["late_responses"] += 1
-        analyze_last_click_comprehension(line["late_responses"], stimulus_summary)
+        result_line["responded"] += 1
+        result_line["late_responses"] += 1
+        analyze_last_click_comprehension(line["late_responses"], result_line)
 
         if len(line["responses"]) > 0:
-            stimulus_summary["multi_clicks"] += 1
+            line["multi_clicks"] += 1
 
     else:
         if len(line["responses"]) > 0:
-            stimulus_summary["responded"] += 1
-            analyze_last_click_comprehension(line["responses"], stimulus_summary)
+            result_line["responded"] += 1
+            analyze_last_click_comprehension(line["responses"], result_line)
 
         if len(line["responses"]) > 2:
-            stimulus_summary["multi_clicks"] += 1
+            result_line["multi_clicks"] += 1
+
+    line["summary"] = result_line
 
 
 def analyze_last_click_comprehension(resp, stimulus_summary):
@@ -573,47 +595,50 @@ def write_csv_file_comprehension(reports, participant_name):
     print("-> saving file: done!")
 
 
-def write_line_for_condition(output_file, participant_name, summary, name):
-    output_file.write('\n')
-    output_file.write(participant_name)
-    output_file.write(';')
-    output_file.write(name)
-    output_file.write(';')
-    output_file.write(str(summary["count"]))
-    output_file.write(';')
-    output_file.write(str(summary["responded"]))
-    output_file.write(';')
-    output_file.write(str(summary["not_responded"]))
-    output_file.write(';')
-    output_file.write(str(summary["correct"]))
-    output_file.write(';')
-    output_file.write(str(summary["incorrect"]))
-    output_file.write(';')
-    output_file.write(str(summary["late_responses"]))
-    output_file.write(';')
-    output_file.write(str(summary["multi_clicks"]))
-    output_file.write(';')
-    output_file.write(str(summary["overall_clicks"]))
-    output_file.write(';')
-    output_file.write("" if len(summary["response_times"]) == 0 else str(summary["response_times"][0]))
-    output_file.write(';')
-    output_file.write("" if len(summary["response_times"]) < 2 else str(summary["response_times"][1]))
-    output_file.write(';')
-    output_file.write("" if len(summary["response_times"]) < 3 else str(summary["response_times"][2]))
-    output_file.write(';')
-    output_file.write("" if len(summary["response_times"]) < 4 else str(summary["response_times"][3]))
-    output_file.write(';')
-    output_file.write("" if len(summary["response_times"]) < 5 else str(summary["response_times"][4]))
-    output_file.write(';')
-    output_file.write("" if len(summary["click_times"]) == 0 else str(summary["click_times"][0]))
-    output_file.write(';')
-    output_file.write("" if len(summary["click_times"]) < 2 else str(summary["click_times"][1]))
-    output_file.write(';')
-    output_file.write("" if len(summary["click_times"]) < 3 else str(summary["click_times"][2]))
-    output_file.write(';')
-    output_file.write("" if len(summary["click_times"]) < 4 else str(summary["click_times"][3]))
-    output_file.write(';')
-    output_file.write("" if len(summary["click_times"]) < 5 else str(summary["click_times"][4]))
+def write_line_for_condition(output_file, participant_name, conditions, name):
+    for line in conditions:
+        summary = line["summary"]
+
+        output_file.write('\n')
+        output_file.write(participant_name)
+        output_file.write(';')
+        output_file.write(name)
+        output_file.write(';')
+        output_file.write(str(summary["count"]))
+        output_file.write(';')
+        output_file.write(str(summary["responded"]))
+        output_file.write(';')
+        output_file.write(str(summary["not_responded"]))
+        output_file.write(';')
+        output_file.write(str(summary["correct"]))
+        output_file.write(';')
+        output_file.write(str(summary["incorrect"]))
+        output_file.write(';')
+        output_file.write(str(summary["late_responses"]))
+        output_file.write(';')
+        output_file.write(str(summary["multi_clicks"]))
+        output_file.write(';')
+        output_file.write(str(summary["overall_clicks"]))
+        output_file.write(';')
+        output_file.write("" if len(summary["response_times"]) == 0 else str(summary["response_times"][0]))
+        output_file.write(';')
+        output_file.write("" if len(summary["response_times"]) < 2 else str(summary["response_times"][1]))
+        output_file.write(';')
+        output_file.write("" if len(summary["response_times"]) < 3 else str(summary["response_times"][2]))
+        output_file.write(';')
+        output_file.write("" if len(summary["response_times"]) < 4 else str(summary["response_times"][3]))
+        output_file.write(';')
+        output_file.write("" if len(summary["response_times"]) < 5 else str(summary["response_times"][4]))
+        output_file.write(';')
+        output_file.write("" if len(summary["click_times"]) == 0 else str(summary["click_times"][0]))
+        output_file.write(';')
+        output_file.write("" if len(summary["click_times"]) < 2 else str(summary["click_times"][1]))
+        output_file.write(';')
+        output_file.write("" if len(summary["click_times"]) < 3 else str(summary["click_times"][2]))
+        output_file.write(';')
+        output_file.write("" if len(summary["click_times"]) < 4 else str(summary["click_times"][3]))
+        output_file.write(';')
+        output_file.write("" if len(summary["click_times"]) < 5 else str(summary["click_times"][4]))
 
 
 main()
