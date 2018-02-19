@@ -5,7 +5,7 @@ import math
 
 
 def main():
-    participant_id = "zp65"
+    participant_id = "on85"
 
     print("Start script for participant ", participant_id)
 
@@ -238,34 +238,19 @@ def write_csv_file(all_lines, participant_name):
         output_file.write(';')
         output_file.write("Response")
 
+        file_write = output_file.write
+        
         for i, line in enumerate(all_lines):
             if (i % 25000) == 0:
                 print("-> row ", i)
 
-            output_file.write('\n')
-            output_file.write(str(line["Line"]))
-            output_file.write(';')
-            output_file.write(str(line["TimestampMs"]))
-            output_file.write(';')
-            output_file.write(str(line["Time"]))
-            output_file.write(';')
-            output_file.write(str(line["Subject"]))
-            output_file.write(';')
-            output_file.write(str(line["Snippet"]))
-            output_file.write(';')
-            output_file.write(str(line["TrialImage"]))
-            output_file.write(';')
-            output_file.write(str(line["TrialNumber"]))
-            output_file.write(';')
-            output_file.write(str(line["GazePosX"]))
-            output_file.write(';')
-            output_file.write(str(line["GazePosY"]))
-            output_file.write(';')
-            output_file.write("" if line["HeartRate"] is None else str(line["HeartRate"]))
-            output_file.write(';')
-            output_file.write("" if line["Breathing"] is None else str(line["Breathing"]))
-            output_file.write(';')
-            output_file.write("" if line["Response"] is None else str(line["Response"]))
+            file_write("\n{Line};{TimestampMs};{Time};{Subject};{Snippet};{TrialImage};{TrialNumber};{GazePosX};{GazePosY};".format(**line))
+
+            file_write("" if line["HeartRate"] is None else str(line["HeartRate"]))
+            file_write(';')
+            file_write("" if line["Breathing"] is None else str(line["Breathing"]))
+            file_write(';')
+            file_write("" if line["Response"] is None else str(line["Response"]))
     print("-> saving file: done!")
 
 
