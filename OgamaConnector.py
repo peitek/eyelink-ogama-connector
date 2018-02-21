@@ -5,10 +5,18 @@ import math
 
 
 def main():
-    participant_id = "on85"
+    #compute_single_participant("ea65")
+    #compute_single_participant("ew72")
+    #compute_single_participant("jl58")
+    #compute_single_participant("jw13")
+    #compute_single_participant("ks01")
+    #compute_single_participant("mk55")
+    compute_single_participant("on85")
+    compute_single_participant("qw51")
 
+
+def compute_single_participant(participant_id):
     print("Start script for participant ", participant_id)
-
     all_lines = parse_eyetracking_data(participant_id)
     all_lines = parse_physio_data(all_lines, participant_id)
     all_lines = parse_response_data(all_lines, participant_id)
@@ -120,7 +128,7 @@ def parse_eyetracking_data(participant_name):
         gaze_positions_not_recognized = 0
 
         for i, line in enumerate(input_file):
-            if (i % 25000) == 0:
+            if (i % 100000) == 0:
                 print("-> Read row of eyetracking: ", i)
 
             csv_line_object = {
@@ -137,31 +145,6 @@ def parse_eyetracking_data(participant_name):
                 "Breathing": None,
                 "Response": None,
             }
-
-            # if the current one is code
-            if not snippet.startswith("D2") and not snippet.startswith("Rest") and not snippet.startswith("DecTime"):
-                if frames_size_code_counter >= 30000:
-                    print("--> switching to decision time after frames: ", frames_size_code_counter)
-                    snippet = "DecTime" + str(dec_time_number)
-                    trial_image = "dec_time_" + str(dec_time_number) + ".png"
-                    frames_size_code_counter = 0
-                    trial_number += 1
-                    dec_time_number += 1
-            elif not snippet.startswith("D2") and not snippet.startswith("Rest"):
-                if frames_size_code_counter >= 2000:
-                    print("--> switching to d2 after frames: ", frames_size_code_counter)
-                    snippet = "D2_" + str(d2_task_number)
-                    trial_image = "attention_task_" + str(d2_task_number) + ".png"
-                    frames_size_code_counter = 0
-                    trial_number += 1
-                    d2_task_number += 1
-            elif not snippet.startswith("D2") and frames_size_code_counter >= 15000:
-                print("--> switching to rest after frames: ", frames_size_code_counter)
-                snippet = "Rest" + str(rest_number)
-                trial_image = "rest_" + str(rest_number) + ".png"
-                frames_size_code_counter = 0
-                trial_number += 1
-                rest_number += 1
 
             if line[0].isdigit():
                 numbers = re.split(r'\t+', line.rstrip('\t'))
@@ -183,7 +166,28 @@ def parse_eyetracking_data(participant_name):
                 timestamp += 1
 
             elif line[0].isalpha():
-                if "!V IMGLOAD FILL" in line:
+                if "Rest Condition" in line:
+                    snippet = "Rest" + str(rest_number)
+                    trial_image = "rest_" + str(rest_number) + ".png"
+                    rest_number += 1
+                    print("--> found rest condition after frames ", frames_size_code_counter)
+                    frames_size_code_counter = 0
+                    trial_number += 1
+                elif "Last Response" in line:
+                    print("--> switching to decision time after frames: ", frames_size_code_counter)
+                    snippet = "DecTime" + str(dec_time_number)
+                    trial_image = "dec_time_" + str(dec_time_number) + ".png"
+                    frames_size_code_counter = 0
+                    trial_number += 1
+                    dec_time_number += 1
+                elif "D2 Task" in line:
+                    print("--> switching to d2 after frames: ", frames_size_code_counter)
+                    snippet = "D2_" + str(d2_task_number)
+                    trial_image = "attention_task_" + str(d2_task_number) + ".png"
+                    frames_size_code_counter = 0
+                    trial_number += 1
+                    d2_task_number += 1
+                elif "!V IMGLOAD FILL" in line:
                     startpos = line.rfind("\\")
                     snippet = line[startpos+1:].replace('\r', '').replace('\n', '')
                     trial_image = snippet
@@ -251,6 +255,7 @@ def write_csv_file(all_lines, participant_name):
             file_write("" if line["Breathing"] is None else str(line["Breathing"]))
             file_write(';')
             file_write("" if line["Response"] is None else str(line["Response"]))
+
     print("-> saving file: done!")
 
 
