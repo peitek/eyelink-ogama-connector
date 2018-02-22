@@ -3,20 +3,25 @@ from os.path import join
 import re
 import math
 
+trial = 0
+
 
 def main():
     #compute_single_participant("ea65")
-    #compute_single_participant("ew72")
-    #compute_single_participant("jl58")
-    #compute_single_participant("jw13")
-    #compute_single_participant("ks01")
-    #compute_single_participant("mk55")
+    compute_single_participant("jw13")
+    compute_single_participant("ks01")
+    compute_single_participant("mk55")
     compute_single_participant("on85")
     compute_single_participant("qw51")
+
+    # excluded due to data quality for now
+    #compute_single_participant("jl58")
+    #compute_single_participant("ew72")
 
 
 def compute_single_participant(participant_id):
     print("Start script for participant ", participant_id)
+
     all_lines = parse_eyetracking_data(participant_id)
     all_lines = parse_physio_data(all_lines, participant_id)
     all_lines = parse_response_data(all_lines, participant_id)
@@ -35,7 +40,7 @@ def parse_physio_data(all_lines, participant_id):
         imestampMs = 0
 
         for i, line in enumerate(input_file):
-            if (i % 10000) == 0:
+            if (i % 100000) == 0:
                 print("-> Read row of physio: ", i)
 
             if line.startswith("#"):
@@ -112,11 +117,14 @@ def parse_eyetracking_data(participant_name):
     # read in eyelink file line for line
     all_lines = []
 
+    global trial
+
     print("Reading file...")
     with open(eyetracking_input_file_path) as input_file:
         frames_size_code_counter = 0
         trial_image = ""
-        trial_number = 0
+        trial_category = ""
+        sequence = 0
         d2_task_number = 1
         dec_time_number = 1
         rest_number = 1
@@ -133,10 +141,12 @@ def parse_eyetracking_data(participant_name):
 
             csv_line_object = {
                 "Line": i,
-                "Subject": subject,
+                "SubjectName": subject,
                 "Snippet": snippet,
+                "TrialNumber": trial,
+                "TrialSequence": sequence,
                 "TrialImage": trial_image,
-                "TrialNumber": trial_number,
+                "TrialCategory": trial_category,
                 "Time": None,
                 "TimestampMs": timestamp,
                 "GazePosX": None,
@@ -171,21 +181,27 @@ def parse_eyetracking_data(participant_name):
                     trial_image = "rest_" + str(rest_number) + ".png"
                     rest_number += 1
                     print("--> found rest condition after frames ", frames_size_code_counter)
+                    trial_category = "Rest"
                     frames_size_code_counter = 0
-                    trial_number += 1
+                    sequence += 1
+                    trial += 1
                 elif "Last Response" in line:
                     print("--> switching to decision time after frames: ", frames_size_code_counter)
                     snippet = "DecTime" + str(dec_time_number)
                     trial_image = "dec_time_" + str(dec_time_number) + ".png"
+                    trial_category = "DecTime"
                     frames_size_code_counter = 0
-                    trial_number += 1
+                    sequence += 1
+                    trial += 1
                     dec_time_number += 1
                 elif "D2 Task" in line:
                     print("--> switching to d2 after frames: ", frames_size_code_counter)
                     snippet = "D2_" + str(d2_task_number)
                     trial_image = "attention_task_" + str(d2_task_number) + ".png"
+                    trial_category = "D2"
                     frames_size_code_counter = 0
-                    trial_number += 1
+                    sequence += 1
+                    trial += 1
                     d2_task_number += 1
                 elif "!V IMGLOAD FILL" in line:
                     startpos = line.rfind("\\")
@@ -193,8 +209,21 @@ def parse_eyetracking_data(participant_name):
                     trial_image = snippet
 
                     print("--> found snippet " + snippet + " after frames ", frames_size_code_counter)
+
+                    if "TD_B" in snippet:
+                        trial_category = "Compr_TD_B"
+                    elif "TD_N" in snippet:
+                        trial_category = "Compr_TD_N"
+                    elif "TD_U" in snippet:
+                        trial_category = "Compr_TD_U"
+                    elif "SY" in snippet:
+                        trial_category = "Syntax"
+                    else:
+                        trial_category = "Compr_BU"
+
                     frames_size_code_counter = 0
-                    trial_number += 1
+                    sequence += 1
+                    trial += 1
                 elif "TRIALID TRIAL" in line:
                     startpos = line.find("TRIALID TRIAL")
                     #carry_over["TrialNumber"] = line[startpos+14:].replace('\r', '').replace('\n', '')
@@ -218,43 +247,64 @@ def write_csv_file(all_lines, participant_name):
     # write objects to file as giant csv
     output_file_path = join("output", participant_name + ".csv")
     with open(output_file_path, 'w') as output_file:
-        output_file.write("Line")
-        output_file.write(';')
-        output_file.write("TimestampMs")
-        output_file.write(';')
-        output_file.write("Time")
-        output_file.write(';')
-        output_file.write("Subject")
-        output_file.write(';')
-        output_file.write("Snippet")
-        output_file.write(';')
-        output_file.write("TrialImage")
-        output_file.write(';')
-        output_file.write("TrialNumber")
-        output_file.write(';')
-        output_file.write("GazePosX")
-        output_file.write(';')
-        output_file.write("GazePosY")
-        output_file.write(';')
-        output_file.write("HeartRate")
-        output_file.write(';')
-        output_file.write("Breathing")
-        output_file.write(';')
-        output_file.write("Response")
-
         file_write = output_file.write
         
+        if True or all_lines[0]["SubjectName"] == "ea65":
+            file_write("SubjectName")
+            file_write(';')
+            file_write("Time")
+            file_write(';')
+            file_write("TrialID")
+            file_write(';')
+            file_write("TrialSequence")
+            file_write(';')
+            file_write("TrialImage")
+            file_write(';')
+            file_write("TrialCategory")
+            file_write(';')
+            file_write("GazePosX")
+            file_write(';')
+            file_write("GazePosY")
+            file_write(';')
+            #file_write("HeartRate")
+            #file_write(';')
+            #file_write("Breathing")
+            #file_write(';')
+            file_write("ResponseX")
+            file_write(';')
+            file_write("ResponseY\n")
+
+        response_temp = None
+        
         for i, line in enumerate(all_lines):
-            if (i % 25000) == 0:
+            if (i % 100000) == 0:
                 print("-> row ", i)
 
-            file_write("\n{Line};{TimestampMs};{Time};{Subject};{Snippet};{TrialImage};{TrialNumber};{GazePosX};{GazePosY};".format(**line))
+            #file_write("\n{Line};{TimestampMs};{Time};{Subject};{Snippet};{TrialImage};{TrialNumber};{GazePosX};{GazePosY};".format(**line))
+            file_write("{SubjectName};{Time};{TrialSequence};{TrialSequence};{TrialImage};{TrialCategory};{GazePosX};{GazePosY};".format(**line))
 
-            file_write("" if line["HeartRate"] is None else str(line["HeartRate"]))
-            file_write(';')
-            file_write("" if line["Breathing"] is None else str(line["Breathing"]))
-            file_write(';')
-            file_write("" if line["Response"] is None else str(line["Response"]))
+            #file_write("" if line["HeartRate"] is None else str(line["HeartRate"]))
+            #file_write(';')
+            #file_write("" if line["Breathing"] is None else str(line["Breathing"]))
+            #file_write(';')
+
+            # drag responses for 200ms, then move mouse out of the area
+            if line["Response"] is not None:
+                if line["Response"] == '3':
+                    response_temp = True
+                elif line["Response"] == '4':
+                    response_temp = False
+                else:
+                    response_temp = None
+
+            if response_temp is None:
+                file_write("0;0")
+            elif response_temp:
+                file_write("20;1000")
+            else:
+                file_write("1200;1000")
+
+            file_write("\n")
 
     print("-> saving file: done!")
 
