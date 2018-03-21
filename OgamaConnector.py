@@ -5,18 +5,39 @@ import math
 
 trial = 0
 
+# TODO remove participant codes
+# TODO remove required response log file
+# TODO remove required physio log file
+# TODO generalize code better (e.g., conditions)
+# TODO clean up code
+# TODO comment/document functions
+
 
 def main():
     #compute_single_participant("ea65")
-    compute_single_participant("jw13")
-    compute_single_participant("ks01")
-    compute_single_participant("mk55")
-    compute_single_participant("on85")
-    compute_single_participant("qw51")
+    #compute_single_participant("jw13")
+    #compute_single_participant("ks01")
+    #compute_single_participant("mk55")
+    #compute_single_participant("on85")
+    #compute_single_participant("qw51")
+    #compute_single_participant("qv57")
+    #compute_single_participant("ia67")
+    #compute_single_participant("qe90")
+    #compute_single_participant("bo23")
+    compute_single_participant("qh83")
+
 
     # excluded due to data quality for now
+    # compute_single_participant("bo49")
+    #compute_single_participant("bd96")
     #compute_single_participant("jl58")
     #compute_single_participant("ew72")
+    #compute_single_participant("ur84")
+    #compute_single_participant("jw66")
+    #compute_single_participant("gq73")
+    #compute_single_participant("gf73")
+    #compute_single_participant("xt73")
+    #compute_single_participant("wb70")
 
 
 def compute_single_participant(participant_id):

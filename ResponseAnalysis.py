@@ -1,19 +1,16 @@
 import copy
 from os.path import join, isfile
-
 import math
-
 import os
+
+# TODO move this file into a separate project
+# TODO remove hard-coded conditions
+# TODO extract d2 conditions?
+file_directory = join('input/')
 
 
 def main():
-    #participant_id = "qw51"
-
-    #print("Start script for participant ", participant_id)
-
-    file_directory = "C:/Users/npeitek/Documents/GitHub/EyeLinkOgamaConnector/input"
-
-    # read all files from a directory and loop through them
+    # read all files from input directory and loop through them
     only_files = [f for f in os.listdir(file_directory) if isfile(join(file_directory, f))]
 
     comprehension_results = []
