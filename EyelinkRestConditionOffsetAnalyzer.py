@@ -16,12 +16,10 @@ fixation_cross_y = 514
 
 
 def main():
-    #participants = ["bo23", "ea65", "ia67", "jw13", "ks01", "mk55", "qe90", "qw51"]
-    participants = ["bo23", "ea65", "ia67", "ks01", "mk55", "qe90", "qw51"]
-    #participants = ["mk55"]
+    participants = ["bo23", "ea65", "ia67", "ks01", "mk55", "qe90", "qw51","zp65"]
 
-    all_fixations_x_per_rest_condition = [[[],[],[],[],[],[],[]] for i in range(26)]
-    all_fixations_y_per_rest_condition = [[[],[],[],[],[],[],[]] for i in range(26)]
+    all_fixations_x_per_rest_condition = [[[],[],[],[],[],[],[],[]] for i in range(26)]
+    all_fixations_y_per_rest_condition = [[[],[],[],[],[],[],[],[]] for i in range(26)]
 
     for participant in participants:
         [all_fixations_x_per_rest_condition, all_fixations_y_per_rest_condition] = analyze_fixations(participants, participant, all_fixations_x_per_rest_condition, all_fixations_y_per_rest_condition)
@@ -46,7 +44,7 @@ def main():
 
 def summarize_fixations_per_participant_and_rest(participants, all_fixations_x_per_rest_condition, axis, weighted):
     summarized_conditions_results = []
-    summarized_participants_results = [[None, None, None, None, None, None, None] for i in range(26)]
+    summarized_participants_results = [[None, None, None, None, None, None, None, None] for i in range(26)]
 
     for i, rest_condition in enumerate(all_fixations_x_per_rest_condition):
         print("\n##### Rest Condition: ", i + 1)

@@ -141,21 +141,20 @@ snippet_AOI = [
 
 
 def main():
-    #participants = ["bo23", "ea65", "ia67", "jw13", "ks01", "mk55", "qe90", "qw51"]
-    participants = ["bo23", "ea65", "ia67", "ks01", "mk55", "qe90", "qw51"]
-    #participants = ["mk55"]
+    participants = ["bo23", "ea65", "ia67", "ks01", "mk55", "on85", "qe90", "qw51", "qv57", "zp65"]
+    #participants = ["bo23", "ea65", "ia67", "ks01", "mk55", "qe90", "qw51"]
 
     analyze_fixations_for_all_participants(participants, False)
     analyze_fixations_for_all_participants(participants, True)
 
-    #print_all_fixations(participants, False)
-    #print_all_fixations(participants, True)
+    print_all_fixations(participants, False)
+    print_all_fixations(participants, True)
 
 
 def analyze_fixations_for_all_participants(participants, use_fixation_length=False):
     aoi_fixations_overall = [0, 0, 0]
     aoi_fixations_per_comprehension = [[0, 0, 0] for i in range(20)]
-    aoi_fixations_per_participant = [[0, 0, 0] for i in range(7)]
+    aoi_fixations_per_participant = [[0, 0, 0] for i in range(len(participants))]
 
     for participant in participants:
         [aoi_fixations_overall, aoi_fixations_per_comprehension, aoi_fixations_per_participant] = analyze_fixations(participants, participant, aoi_fixations_overall, aoi_fixations_per_comprehension, aoi_fixations_per_participant, use_fixation_length)
@@ -189,6 +188,7 @@ def print_all_fixations(participants, use_fixation_length=False):
                 if matching_snippet_aoi is not None and fixation['trial_category'] != "D2" and fixation['trial_category'] != "Rest" and fixation['trial_category'] != "DecTime":
                     if "D2_" in str(fixation["snippet"]) or "Rest" in str(fixation["snippet"]) or "DecTime" in str(fixation["snippet"]):
                         print("something is wrong!")
+                        continue
 
                     print("-> found fixation for " + str(fixation["snippet"]) + " after " + str(fixation["frames"]) + " frames, for " + fixation["data"][2] + " msec, at position x=" + fixation["data"][3] + ", y=" + fixation["data"][4])
 
@@ -253,6 +253,7 @@ def analyze_fixations(participants, participant_id, aoi_fixations_overall, aoi_f
             if matching_snippet_aoi is not None and fixation['trial_category'] != "D2" and fixation['trial_category'] != "Rest" and fixation['trial_category'] != "DecTime":
                 if "D2_" in str(fixation["snippet"]) or "Rest" in str(fixation["snippet"]) or "DecTime" in str(fixation["snippet"]):
                     print("something is wrong!")
+                    continue
 
                 print("-> found fixation for " + str(fixation["snippet"]) + " after " + str(fixation["frames"]) + " frames, for " + fixation["data"][2] + " msec, at position x=" + fixation["data"][3] + ", y=" + fixation["data"][4])
 

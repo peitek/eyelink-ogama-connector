@@ -8,11 +8,13 @@ import re
 # TODO comment/document functions
 
 trial = 0
+workaround_for_pilot_zp65 = False
+
+# participants = ["bo23", "ea65", "ia67", "jw13", "ks01", "mk55", "qe90", "qw51", "zp65"]
+participants = ["on85","qv57"]
 
 
 def main():
-    participants = ["bo23", "ea65", "ia67", "jw13", "ks01", "mk55", "qe90", "qw51"]
-
     for participant in participants:
         find_fixations_for_single_participant(participant)
 
@@ -53,12 +55,38 @@ def find_fixations_for_single_participant(participant_name):
             if (i % 100000) == 0:
                 print("-> Read row of eyetracking: ", i)
 
+            if workaround_for_pilot_zp65:
+                # if the current one is code
+                if not snippet.startswith("D2") and not snippet.startswith("Rest") and not snippet.startswith("DecTime"):
+                    if frames_size_code_counter >= 30000:
+                        print("--> switching to decision time after frames: ", frames_size_code_counter)
+                        snippet = "DecTime" + str(dec_time_number)
+                        trial_image = "dec_time_" + str(dec_time_number) + ".png"
+                        frames_size_code_counter = 0
+                        trial += 1
+                        dec_time_number += 1
+                elif not snippet.startswith("D2") and not snippet.startswith("Rest"):
+                    if frames_size_code_counter >= 2000:
+                        print("--> switching to d2 after frames: ", frames_size_code_counter)
+                        snippet = "D2_" + str(d2_task_number)
+                        trial_image = "attention_task_" + str(d2_task_number) + ".png"
+                        frames_size_code_counter = 0
+                        trial += 1
+                        d2_task_number += 1
+                elif not snippet.startswith("D2") and frames_size_code_counter >= 15000:
+                    print("--> switching to rest after frames: ", frames_size_code_counter)
+                    snippet = "Rest" + str(rest_number)
+                    trial_image = "rest_" + str(rest_number) + ".png"
+                    frames_size_code_counter = 0
+                    trial += 1
+                    rest_number += 1
+
             if line[0].isdigit():
                 frames_size_code_counter += 1
                 timestamp += 1
 
             elif line[0].isalpha():
-                if "EFIX L" in line:
+                if "EFIX L" in line or "EFIX R" in line:
                     fixation_info = re.split(r'\t+', line.rstrip('\t'))
                     print("----> found fixation after " + str(frames_size_code_counter) + " frames, for " + fixation_info[2] + " msec, at position x=" + fixation_info[3] + ", y=" + fixation_info[4])
                     all_fixations.append({
