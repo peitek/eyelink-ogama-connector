@@ -83,9 +83,9 @@ def main():
                             "trial_category": trial_category,
                             "snippet": snippet,
                             "timestamp": timestamp,
-                            "rest_condition": rest_condition,
                             "frames": frames_size_code_counter,
-                            "time": numbers[0].lstrip(),
+                            "gaze_x": gaze_x,
+                            "gaze_y": numbers[2].lstrip(),
                             "pupil_dilation": numbers[3].lstrip()
                         })
                         fixation_count += 1
