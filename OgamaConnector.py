@@ -24,7 +24,7 @@ def main():
     #compute_single_participant("ia67")
     #compute_single_participant("qe90")
     #compute_single_participant("bo23")
-    compute_single_participant("qh83")
+    #compute_single_participant("qh83")
 
 
     # excluded due to data quality for now
@@ -38,6 +38,7 @@ def main():
     #compute_single_participant("gf73")
     #compute_single_participant("xt73")
     #compute_single_participant("wb70")
+    pass
 
 
 def compute_single_participant(participant_id):
