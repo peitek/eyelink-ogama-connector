@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.3.0 (2018-04-xx)
+
+- First public release
+
+## 0.2.0 (2018-04-10)
+
+- First public release
+- Extracted all other features/analysis to a different project
+
 ## 0.1.0 (2018-03-20)
 
 - Added TODOs
