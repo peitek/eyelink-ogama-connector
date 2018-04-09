@@ -17,8 +17,8 @@ def main():
     participants = ["bo23", "ea65", "ia67", "ks01", "mk55", "qe90", "qw51", "zp65"]
     #participants = ["ks01"]
 
-    #analyze_pupil_dilation_for_all_participants(participants)
-    analyze_pupil_dilation_movement_for_all_participants(participants)
+    analyze_pupil_dilation_for_all_participants(participants)
+    #analyze_pupil_dilation_movement_for_all_participants(participants)
 
 
 def analyze_pupil_dilation_movement_for_all_participants(participants):
