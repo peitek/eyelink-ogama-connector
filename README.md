@@ -44,7 +44,7 @@ Possible usages after everything is done:
 # Related Repositories
 
 * [Eye-Tracking Analysis Pipeline](https://github.com/peitek/eyetracking-analyses)
-* Eye-Tracking Visualization Pipeline
+* [Eye-Tracking Visualization Pipeline](https://github.com/peitek/eyetracking-visualizations)
 
 
 # License #
