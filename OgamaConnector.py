@@ -3,6 +3,12 @@ from os.path import join
 import re
 import math
 
+"""
+This file converts EyeLink log files into a Ogama-compatible .csv file.
+
+On request, it can also merge physiological data (heart rate, respiration) from our Philips MRI and participant response from our Presentation scripts.
+"""
+
 # config variables, you may need to change these
 INPUT_PATH = "input"
 OUTPUT_PATH = "output"
@@ -15,14 +21,12 @@ MOUSE_POSITION_CORRECT_RESPONSE = "20;1000"
 MOUSE_POSITION_INCORRECT_RESPONSE = "1200;1000"
 
 
-# TODO clean up code
-# TODO comment/document functions
 # TODO add tests
+# TODO make code more general usable (e.g., for other experiment setups)
 
 
 def main():
-    parse_eyelink_of_single_participant("example_participant_01")
-    pass
+    parse_eyelink_of_single_participant("p01", True, True, True)
 
 
 def parse_eyelink_of_single_participant(participant_id, write_header=True, parse_physio=False, parse_response=False):
@@ -59,7 +63,7 @@ def parse_eyetracking_data(participant_id):
         trial_image = ""
         trial_category = ""
 
-        # specific to our study (TODO move this to a config JSON?)
+        # TODO this is specific to our study (move it into a config JSON?)
         config_task_category = [{
             'log_line': "Rest Condition",
             'snippet_name': "Rest",
@@ -82,7 +86,7 @@ def parse_eyetracking_data(participant_id):
             'counter': 1,
         }]
 
-        # specific to our study (TODO move this to a config JSON?)
+        # TODO this is specific to our study (move it into a config JSON?)
         config_snippet_condition = [{
             'log_line': "TD_B",
             'condition': "Compr_TD_B"
@@ -356,4 +360,4 @@ def write_output_to_csv_file(participant_name, all_lines, write_header=True, par
     print("-> saving file: done!")
 
 
-main()
+if __name__ == "__main__": main()
