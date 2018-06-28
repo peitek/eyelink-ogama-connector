@@ -17,7 +17,7 @@ Sample data for participant `p01` is provided, you should be able to run the scr
 ## Required File Names
 
 * All files are in the same directory
-* Eye tracking: `*participant_id*.asc`
+* EyeLink eye-tracking log: `*participant_id*.asc`
 * [Optional] Response: `*participant_id*_response.log`
 * [Optional] Physio: `*participant_id*_physio.log`
 
@@ -43,7 +43,7 @@ Possible usages after everything is done:
 
 # Related Repositories
 
-* Eye-Tracking Analysis Pipeline
+* [Eye-Tracking Analysis Pipeline](https://github.com/peitek/eyetracking-analyses)
 * Eye-Tracking Visualization Pipeline
 
 
