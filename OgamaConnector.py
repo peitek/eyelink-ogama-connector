@@ -28,11 +28,14 @@ MOUSE_POSITION_INCORRECT_RESPONSE = "1200;1000"
 def main():
     parse_eyelink_of_single_participant("p01", True, True, True)
 
+    for participant in PARTICIPANTS:
+        parse_eyelink_of_single_participant(participant, True, False, True, True)
 
-def parse_eyelink_of_single_participant(participant_id, write_header=True, parse_physio=False, parse_response=False):
+
+def parse_eyelink_of_single_participant(participant_id, write_header=True, parse_physio=False, parse_response=False, insert_eyelink_event=False):
     print("Start script for participant: ", participant_id)
 
-    all_eyetracking_frames = parse_eyetracking_data(participant_id)
+    all_eyetracking_frames = parse_eyetracking_data(participant_id, insert_eyelink_event)
 
     if parse_physio:
         all_eyetracking_frames = parse_physio_data(participant_id, all_eyetracking_frames)
@@ -40,10 +43,10 @@ def parse_eyelink_of_single_participant(participant_id, write_header=True, parse
     if parse_response:
         all_eyetracking_frames = parse_response_data(participant_id, all_eyetracking_frames)
 
-    write_output_to_csv_file(participant_id, all_eyetracking_frames, write_header, parse_physio, parse_response)
+    write_output_to_csv_file(participant_id, all_eyetracking_frames, write_header, parse_physio, parse_response, insert_eyelink_event)
 
 
-def parse_eyetracking_data(participant_id):
+def parse_eyetracking_data(participant_id, insert_eyelink_event):
     print("\nParsing EyeLink eye-tracking data for ", participant_id)
 
     eyetracking_input_file_path = join(INPUT_PATH, participant_id + '.asc')
@@ -62,6 +65,7 @@ def parse_eyetracking_data(participant_id):
         snippet = ""
         trial_image = ""
         trial_category = ""
+        current_eyelink_event = None
 
         # TODO this is specific to our study (move it into a config JSON?)
         config_task_category = [{
@@ -131,6 +135,7 @@ def parse_eyetracking_data(participant_id):
                 "GazePosX": None,
                 "GazePosY": None,
                 "PupilDilation": None,
+                "EyeLinkEvent": current_eyelink_event,
                 "HeartRate": None,
                 "Breathing": None,
                 "Response": None,
@@ -169,6 +174,20 @@ def parse_eyetracking_data(participant_id):
                     frame_size_code_counter = 0
                     sequence += 1
                     trial += 1
+
+                elif "SBLINK L" in line or "SBLINK R" in line:
+                    current_eyelink_event = "Blink"
+                elif "SFIX L" in line or "SFIX R" in line:
+                    current_eyelink_event = "Fixation"
+                elif "SSACC L" in line or "SSACC R" in line:
+                    current_eyelink_event = "Saccade"
+
+                elif "EBLINK L" in line or "EBLINK R" in line:
+                    current_eyelink_event = None
+                elif "EFIX L" in line or "EFIX R" in line:
+                    current_eyelink_event = None
+                elif "ESACC L" in line or "ESACC R" in line:
+                    current_eyelink_event = None
 
                 elif "!V IMGLOAD FILL" in line:
                     startpos = line.rfind("\\")
@@ -281,7 +300,7 @@ def is_number(s):
         return False
 
 
-def write_output_to_csv_file(participant_name, all_lines, write_header=True, parse_physio=False, parse_response=False):
+def write_output_to_csv_file(participant_name, all_lines, write_header=True, parse_physio=False, parse_response=False, insert_eyelink_event=False):
     print("\n====================\n")
     print("Final step: Write everything to a csv file for ", participant_name)
 
@@ -320,6 +339,11 @@ def write_output_to_csv_file(participant_name, all_lines, write_header=True, par
                 file_write("ResponseX")
                 file_write(';')
                 file_write("ResponseY")
+                file_write(';')
+
+            if insert_eyelink_event:
+                file_write("EyeLinkEvent")
+                file_write(';')
 
             file_write("\n")
 
@@ -354,6 +378,12 @@ def write_output_to_csv_file(participant_name, all_lines, write_header=True, par
                     file_write(MOUSE_POSITION_CORRECT_RESPONSE)
                 else:
                     file_write(MOUSE_POSITION_INCORRECT_RESPONSE)
+
+                file_write(';')
+
+            if insert_eyelink_event:
+                file_write("" if line["EyeLinkEvent"] is None else str(line["EyeLinkEvent"]))
+                file_write(';')
 
             file_write("\n")
 
